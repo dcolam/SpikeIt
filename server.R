@@ -50,7 +50,8 @@ function(input, output, session){
   output$tabs <- DT::renderDataTable({
     if(!is.null(input$preview_sample)){
       tab <- tables$tabs[[input$preview_sample]]
-      DT::datatable(tab[,grepl(input$paraCols, colnames(tab))], options = list(pageLength = 20))
+      cols <- grepl(input$paraCols, colnames(tab))
+      DT::datatable(tab[,cols], options = list(pageLength = 20))
     }
   })
   
@@ -241,19 +242,20 @@ function(input, output, session){
       
       #dat <- tables$tabs[[input$view_sample]]
       dat <- tables$tabs[[input$view_sample]]
-       
-      dat <- dat[, c("X1", input$plotCells)]
-      print("Print dat")
-      print(dat)
-      print(peakAnalysis)
+      dat$t <- row.names(dat)
+      dat <- dat[, c("t", input$plotCells)]
+      
       peaks <- peakAnalysis(input$view_sample, dat, input, show.plots=T)
+      
+      
       dat <- peaks$dat
       datMax <- peaks$datMax
       #print(peaks)
+      print(dat)
+      print(datMax)
+      print(unique(dat$variable))
       
-     
-      
-      p <- ggplot(data=dat, aes(x=t, y=Value, colour = variable)) + geom_line() 
+      p <- ggplot(data=dat, aes(x=t, y=Value, colour = variable)) + geom_line()
       
       if(input$show.peaks){
         p <- p +

@@ -6,6 +6,7 @@
 #' @export
 #app.server <- function(){
 library(data.table)
+library(DT)
 library(reshape2)
 library(dplyr)
 library(ggplot2)
@@ -18,7 +19,7 @@ function(input, output, session){
   
   
   observeEvent(input$sampleFileInput,{
-    print(input$sampleFileInput)
+    #print(input$sampleFileInput)
     tables$filenames <- c(tables$filenames, input$sampleFileInput$name)
     tables$sizes <- c(tables$sizes, input$sampleFileInput$size)
     
@@ -40,11 +41,30 @@ function(input, output, session){
   )
   
   output$samples_info <- renderTable({
-    cbind( Files=tables$filenames, Size = tables$sizes)
+    if(!is.null(tables$sizes)){
+    cbind( Files=tables$filenames, Size = utils:::format.object_size(tables$sizes, "auto"))
+    }
   })
   
   observeEvent(input$removesamples, {
     tables = NULL
+  })
+  
+  observeEvent(input$testsamples, {
+    
+    exTab <- file.info("Example_Table.csv")
+    exTab$filename <- "Example_Table.csv"
+    tables$filenames <- c(tables$filenames, exTab$filename)
+    tables$sizes <- c(tables$sizes, exTab$size)
+    
+    tables$tabs <- c(tables$tabs, lapply(exTab$filename, FUN=function(x){
+      x=data.frame(read_delim(x, ",", escape_double = FALSE, trim_ws = TRUE))
+    }))
+    names(tables$tabs) <- tables$filenames
+    updateSelectInput(session, inputId = "preview_sample", choices=tables$filenames)
+    updateSelectInput(session, inputId = "view_sample", choices=tables$filenames)
+    
+    
   })
   
   output$tabs <- DT::renderDataTable({
@@ -98,6 +118,8 @@ function(input, output, session){
     }
   })
   
+
+  
   output$background <- renderUI({
     if(!is.null(input$plotCells) & !is.null(input$plotCols)){
       
@@ -121,126 +143,8 @@ function(input, output, session){
   
   
   p <- reactive({
-    if(!is.null(input$plotCells) & !is.null(input$background) & !is.null(input$plotCols)){
+    if(!is.null(input$plotCells) & !is.null(input$plotCols)){
      
-      # dat <- tables$tabs[[input$view_sample]]
-      # 
-      # dat <- dat[, c("X1", input$plotCells)]
-      # t <- dat$X1
-      # dat$X1 <- NULL
-      # 
-      # if(!is.null(input$background)){
-      #   #abs(x- mean(x)) / mean(x)
-      #   #print(input$background)
-      #   dat <- abs(dat[,input$plotCells] - dat[,input$background]) / mean(dat[,input$background])
-      #   dat <- dat[,colnames(dat) != input$background]
-      # }
-      # #print(dat)
-      # 
-      # snr <- mean(rowMeans(dat)) / sd(rowMeans(dat))
-      # 
-      # maxima <- apply(dat,2, FUN=function(x) {
-      #   
-      #   
-      #   #print(x)
-      #   snr <- mean(x) / sd(x)
-      #   #print(snr)
-      #   #print(mean(x))
-      #   max <- find_peaks(x, input$stringency, snr, input$dfThresh)
-      #   #print(max)
-      # })
-      # 
-      # minima <- apply(dat,2, FUN=function(x) {
-      #   
-      #   
-      #   #print(x)
-      #   snr <- mean(x) / sd(x)
-      #   #print(snr)
-      #   #print(mean(x))
-      #   min <- find_minima(-x, 2, 0)
-      #   #print(max)
-      # })
-      # 
-      # 
-      # #print(maxima)
-      # dat$t <- t
-      # 
-      # dat <- melt(dat, id.vars = "t")
-      # dat <- subset(dat, variable != "X1")
-      # 
-      # datMax <- data.frame()
-      # for (k in colnames(dat)) datMax[[k]] <- as.numeric()
-      # for(x in names(maxima)){
-      #   #print(x)
-      #   datMax <- rbind(datMax, subset(dat, variable == x & t %in% maxima[[x]]))
-      #   
-      # }
-      # 
-      # datMin <- data.frame()
-      # for (k in colnames(dat)) datMin[[k]] <- as.numeric()
-      # for(x in names(minima)){
-      #   #print(x)
-      #   datMin <- rbind(datMin, subset(dat, variable == x & t %in% minima[[x]]))
-      #   
-      # }
-      # 
-      # #print(length(maxima))
-      # #print(maxima)
-      # #print(datMin)
-      # #print(datMax)
-      # #print(dat)
-      # 
-      # 
-      # datMax$start <- NA
-      # datMax$stop <- NA
-      # datMax$intensity.start <- NA
-      # datMax$intensity.stop <- NA
-      # 
-      # for(m in unique(datMax$variable)){
-      #   
-      #   
-      #   minima <- datMin[datMin$variable == m,]$t
-      #   maxima <- datMax[datMax$variable ==m,]$t
-      #   
-      #   if(min(maxima)< min(minima) & length(maxima)>1){
-      #     maxima <- maxima[2:length(maxima)]
-      #   }
-      #   if(max(maxima)> max(minima)& length(maxima)>1){
-      #     maxima <- maxima[1:length(maxima)-1]
-      #   }
-      #   
-      #   if(length(maxima) > 1){
-      #     for(i in 1:length(maxima)){
-      #       
-      #       
-      #       #print(max(minima[which(minima<maxima[i])]))
-      #       #print(min(minima[which(minima>maxima[i])]))
-      #       start <- max(minima[which(minima<maxima[i])])
-      #       stop <- min(minima[which(minima>maxima[i])])
-      #       datMax[datMax$variable ==m,]$start[i] <- start
-      #       datMax[datMax$variable ==m,]$intensity.start[i] <- subset(dat, variable == m & t ==start)$value
-      #       
-      #       
-      #       datMax[datMax$variable ==m,]$stop[i] <- stop
-      #       datMax[datMax$variable ==m,]$intensity.stop[i] <- subset(dat, variable == m & t ==stop)$value
-      #       
-      #       
-      #     }
-      #     
-      #     #datMax[datMax$variable ==m,]$intensity.start <- subset(dat, variable == m & t %in% datMax[datMax$variable ==m,]$start)$value
-      #     #datMax[datMax$variable ==m,]$intensity.stop <- subset(dat, variable == m & t %in% datMax[datMax$variable ==m,]$stop)$value
-      #     #print(length(subset(dat, variable == m & t %in% datMax[datMax$variable ==m,]$start)$value))
-      #     #print(length(datMax[datMax$variable ==m,]$start))
-      #     }
-      # }
-      # 
-      # print(datMax)
-      
-      #print(input$checkFacetgrid)
-      
-      #print(input[["view_sample"]])
-      
-      #dat <- tables$tabs[[input$view_sample]]
       dat <- tables$tabs[[input$view_sample]]
       dat$t <- row.names(dat)
       dat <- dat[, c("t", input$plotCells)]
@@ -251,31 +155,24 @@ function(input, output, session){
       dat <- peaks$dat
       datMax <- peaks$datMax
       #print(peaks)
-      print(dat)
       print(datMax)
-      print(unique(dat$variable))
       
       p <- ggplot(data=dat, aes(x=t, y=Value, colour = variable)) + geom_line()
       
       if(input$show.peaks){
+        if(!is.na(datMax$variable)){
         p <- p +
         geom_point(data=datMax, aes(x=t, y=Value, color=variable)) +
         geom_point(data=datMax, aes(x=start, y=intensity.start, label="Peak Start"),  color="red") +
         geom_point(data=datMax, aes(x=stop, y=intensity.stop), label="Peak Stop", color="blue") + labs(x = "Time", y = "dF/F", color = "Trace")
+        }
       }
-      
-      # p <- ggplot(data=dat, aes(x=as.numeric(t), y=as.numeric(Value), color = variable)) + geom_line() +
-      #   geom_point(data=datMax, aes(x=as.numeric(t), y=as.numeric(Value), color=variable)) + xlab("Time") + ylab("dF/F") +
-      #   geom_point(data=datMax, aes(x=as.numeric(start), y=as.numeric(intensity.start))) +
-      #   geom_point(data=datMax, aes(x=as.numeric(stop), y=as.numeric(intensity.stop)))
-      
-      
+ 
       
       if(input$checkFacetgrid){
         p <- p + facet_grid(variable~., scales="free")
       }
       
-      #+ facet_grid(variable~., scales="free")
       return(p)
       
     }
@@ -341,19 +238,30 @@ function(input, output, session){
     
     maxTables <- lapply(names(tables$tabs), FUN=function(x){
       dat <- tables$tabs[[x]]
+      dat$t <- row.names(dat)
       x= peakAnalysis(x, dat, input, show.plots=F)
-    }) 
+    })
+    
+    
     maxTables <- bind_rows(maxTables, .id = "column_label")
-    #print(maxTables)
-    colnames(maxTables) <- c("Table.ID", "Peak.Time", "Cell.Trace", "Peak.Intensity", "Table", "Peak.Start", "Peak.Stop", "Start.Intensity", "Stop.Intensity", 
+    
+    
+    colnames(maxTables) <- c("Table.ID", "Cell.Trace", "Peak.Time", "Peak.Value", "Table", "Peak.Start", "Peak.Stop", "Start.Intensity", "Stop.Intensity", 
                              "Peak.Duration", "Duration.To.Peak", "Time.To.Decay", "Baseline.Intensity", "Amplitude")
     #print(maxTables)
     tables$peakTables <- maxTables
-    tables$meanTables <- aggregate(maxTables, by=list(Table.ID = maxTables$Table.ID, 
+    
+    cols <- c("Table.ID", "Cell.Trace", "Peak.Value", "Table", "Start.Intensity", "Stop.Intensity", "Peak.Duration", "Duration.To.Peak", "Time.To.Decay", "Baseline.Intensity", "Amplitude")
+    
+    meanTables <- aggregate(maxTables[,cols], by=list(Table.ID = maxTables$Table.ID, 
                                                       Cell.Trace = maxTables$Cell.Trace, 
                                                       Table=maxTables$Table), 
-                                   FUN=mean)
-    tables$meanTables <-  tables$meanTables[, colSums(is.na(tables$meanTables)) != nrow( tables$meanTables)]
+                                   FUN=function(x){
+                                     if(is.numeric(x)){
+                                       mean(x, na.rm=T)
+                                     }
+                                   })
+    tables$meanTables <-  meanTables[, cols]
     #print(tables$meanTables)
   })
   
@@ -366,7 +274,12 @@ function(input, output, session){
   output$results <- DT::renderDataTable({
     if(!is.null(tables[[input$resultsTable]])){
       #tab <- tables$tabs[[input$preview_sample]]
-      DT::datatable(tables[[input$resultsTable]], options = list(pageLength = 20))
+      
+      tab <- tables[[input$resultsTable]]  
+      
+      tab <- tab %>%  mutate_if(is.numeric, round, digits=3)
+      
+      DT::datatable(tab, options = list(pageLength = 20)) 
     }
   })
   
@@ -395,7 +308,8 @@ function(input, output, session){
   
   output$downloadTable <- downloadHandler(
     filename = function() {
-      paste(input$download_table, ' Edited Table.csv', sep='')
+      #paste(input$download_table, ' Edited Table.csv', sep='')
+      paste(input$tabTitle, ".csv", sep="")
     },
     content = function(file) {
       write.csv(tables[[input$download_table]], file, row.names = FALSE)

@@ -38,16 +38,18 @@ shinyUI( dashboardPage(skin = "black",
                          
                        tabItem("plot",
                                
-                               box(width=12, title = "Plot Calcium Traces",
+                               box(width=6,  height = "100%", title = "Plot Calcium Traces",
                                    
                                    selectInput("view_sample", "Select a Table", choices=c(), selectize=F, multiple = F),
                                    uiOutput("plotcolumn", width=6), uiOutput("cells", width=6),
-                                   uiOutput("background", width=6),
+                                   #uiOutput("background", width=6),
+                                   numericInput("del", "Time between Frames (in ms)", value = 100, min = 0, max = 10000),
                                    sliderInput("stringency", "Choose a stringency for the peak detection", 0, 100, step=0.1, value=5),
-                                   sliderInput("dfThresh", "Choose a minimum dF/F threshold value", 0, 5, step=0.01, value=0.5),
+                                   sliderInput("dfThresh", "Choose a minimum dF/F threshold value", 0, 5, step=0.01, value=0.1),
                                    checkboxInput("checkFacetgrid", "Use a facet_grids", value = F),
-                                   checkboxInput("show.peaks", "Show Peak Points (Start in Red, End in Blue)", value = F),
-                                   jqui_resizable(plotOutput("traces"))
+                                   checkboxInput("show.peaks", "Show Peak Points (Start in Red, End in Blue)", value = F)),
+                               box(width=6, height = "100%", title = "Plot Calcium Traces",
+                                   jqui_resizable(plotOutput("traces",  width = "100%",  height = "100%"))
                                    ),
                                
                                box(width=12, collapsed=T, collapsible = T, title="Plot Parameters",
@@ -63,9 +65,10 @@ shinyUI( dashboardPage(skin = "black",
                                box(width=12, title = "Setup Parameters",
                                    
                                    uiOutput("plotcolumn2", width=6),
-                                   uiOutput("background2", width=6),
+                                   #uiOutput("background2", width=6),
+                                   numericInput("del2", "Time between Frames (in ms)", value = 100, min = 0, max = 10000),
                                    sliderInput("stringency2", "Choose a stringency for the peak detection", 0, 100, step=0.1, value=5),
-                                   sliderInput("dfThresh2", "Choose a minimum dF/F threshold value", 0, 5, step=0.01, value=0.5),
+                                   sliderInput("dfThresh2", "Choose a minimum dF/F threshold value", 0, 5, step=0.01, value=0.1),
                                    actionButton("analysis", "Start Analysis")
                                    ),
                                box(width=12, collapsed=T, collapsible = T, title="Inspect Tables",
@@ -84,6 +87,9 @@ shinyUI( dashboardPage(skin = "black",
                        tabItem("export",
                                
                                box(width=12, title="Export Data Tables",
+                                   
+                                   textInput("tabTitle", "Save as ", "Peak-Tables"),
+                                   
                                    selectInput("download_table", "Select a Table", choices=list("Peak-wise"="peakTables", "Cell-wise"="meanTables"), selectize=F, multiple = F),
                                    
                                    downloadButton("downloadTable", "Download Table")

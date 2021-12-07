@@ -176,18 +176,30 @@ peakAnalysis <- function(x, dat, input, show.plots=F){
         
       }
     }
-
-    datMax$total.duration <- del* (datMax$stop - datMax$start)
-    datMax$duration.to.peak <- del* (datMax$t - datMax$start)
-    datMax$time.decay <- del* (datMax$stop - datMax$t)
+    
+    #datMax$FrameNo <- datMax$t
+    datMax$Time <- del*datMax$t / 1000
+    
+    datMax$total.duration <- del* (datMax$stop - datMax$start) / 1000
+    datMax$duration.to.peak <- del* (datMax$t - datMax$start)/ 1000
+    datMax$time.decay <- del* (datMax$stop - datMax$t)/ 1000
+    
+    datMax$start.Time <- del * datMax$start / 1000
+    datMax$stop.Time <- del * datMax$stop / 1000
     
     datMax$baseline <- rowMeans(datMax[,c("intensity.start", "intensity.stop")])
     datMax$amplitude <- abs(datMax$Value - datMax$baseline) / abs(mean(datMax$baseline, na.rm = T))
     datMax <- datMax[complete.cases(datMax),]
+    #datMax$t <- NULL
   
   }else{
-
+    
+    #datMax$FrameNo <- as.numeric()
     datMax$Value <-  as.numeric()
+    datMax$Table <- as.character()
+    #datMax$Time <- as.numeric()
+
+    
     datMax$start <- as.numeric()
     datMax$stop <-  as.numeric()
     datMax$intensity.start <-  as.numeric()
@@ -198,11 +210,27 @@ peakAnalysis <- function(x, dat, input, show.plots=F){
     
     datMax$baseline <-  as.numeric()
     datMax$amplitude <-  as.numeric()
+    datMax$Time <-  as.numeric()
+    datMax$start.Time <- as.numeric()
+    datMax$stop.Time <-  as.numeric()
     
     datMax[1,] <- NA
     datMax$Table <- x
+    
 
   }
+  
+  #melted.dat$FrameNo <- melted.dat$t
+  melted.dat$Time <- del*melted.dat$t / 1000
+  #melted.dat$t <- NULL
+  
+  if(nrow(datMax) ==0){
+    datMax[1,] <- NA
+    datMax$Table <- x
+  }
+  
   ifelse(show.plots, return(list(dat=melted.dat, datMax=datMax)), return(datMax))
 }
+
+save.image() 
 

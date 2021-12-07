@@ -4,6 +4,7 @@
 library(shiny)
 library(plotly)
 library(shinydashboard)
+#library(shinydashboardPlus)
 library(shinycssloaders)
 library(colourpicker)
 library(shinyFiles)
@@ -15,63 +16,125 @@ shinyUI( dashboardPage(skin = "black",
                        
                        dashboardSidebar(
                          sidebarMenu(id="menu",
-                                     menuItem("Setup", tabName="setup", badgeLabel=uiOutput("badgeText_samples"), badgeColor="blue"),
-                                     menuItem("Plot Curves", tabName="plot"),
-                                     menuItem("Spike Analyzer", tabName="spike"),
-                                     menuItem("Export", tabName="export"),
-                                     menuItem("About", tabName="about")
-                         )
+                                     menuItem("Setup", tabName="setup", badgeLabel=uiOutput("badgeText_samples"), badgeColor="blue", icon = icon("fas fa-cloud-upload-alt")),
+                                     # && input.sidebarCollapsed.sidebarCollapsed == 'true'
+                                    
+                                     
+                                     menuItem("Plot Curves", tabName="plot", icon = icon("far fa-chart-bar")),
+                                     menuItem("Spike Analyzer", tabName="spike",  icon = icon("fas fa-table")),
+                                     menuItem("Export", tabName="export", badgeLabel=uiOutput("badgeText_samples2"), badgeColor="green", icon = icon("fas fa-cloud-download-alt")),
+                                     menuItem("Download Fiji Plugin", tabName="plugin"),
+                                     menuItem("Cite", tabName="tab_cite"),
+                                     tags$div(id="lablink", tags$a(href="https://schrattlab.ethz.ch/", "schrattlab.ethz.ch"))
+                                     ),
+                         
+                           conditionalPanel(condition="input.menu == 'setup' && !input.sidebarCollapsed",       
+                                            fileInput("sampleFileInput", label="Select Trace Tables", multiple=T, width=200),
+                                            actionButton("testsamples", "load example",  width="75%"),
+                                            actionButton("removesamples", "remove all", width="75%",  icon = icon("fas fa-trash-alt"))),
+                         
+                         conditionalPanel(condition="input.menu == 'plot'  && !input.sidebarCollapsed",       
+                                          selectInput("view_sample", "Select a Table", choices=c(), selectize=F, multiple = F),
+                                          sliderInput("stringency", "Choose a stringency for the peak detection", 0, 25, step=0.1, value=5),
+                                          sliderInput("dfThresh", "Choose a minimum dF/F threshold value", 0, 5, step=0.01, value=0.1),
+                                          numericInput("del", "Time between Frames (in ms)", value = 100, min = 0, max = 10000),
+                                          
+                                          uiOutput("plotcolumn", width=6), uiOutput("cells", width=6)
+
+                         ),
+                         conditionalPanel(condition="input.menu == 'spike'  && !input.sidebarCollapsed", 
+                                          
+                                          uiOutput("plotcolumn2", width=6),
+                                          #uiOutput("background2", width=6),
+                                          numericInput("del2", "Time between Frames (in ms)", value = 100, min = 0, max = 10000),
+                                          sliderInput("stringency2", "Choose a stringency for the peak detection", 0, 25, step=0.1, value=5),
+                                          sliderInput("dfThresh2", "Choose a minimum dF/F threshold value", 0, 5, step=0.01, value=0.1),
+                                          actionButton("analysis", "Start Analysis", icon =  icon("fas fa-search"))
+                                          )
+                                            
+                           
+                         
                        ),
                        dashboardBody(
+                         tagList(
+                           tags$head(
+                             tags$style(".inlineInputs div { display:inline-block; }"),
+                             tags$style(HTML('#lablink {position: absolute;bottom:2px;left:8px;font-size: 110%;font-weight: bold;text-decoration: none;}
+                                                #lablink a:hover {text-decoration: underline;}')))
+                         ),
+                         
+                         
+                         
                          tabItems(
                          tabItem("setup",
-                                 box(width=6, title = "Samples", actionButton("removesamples", "remove all"),actionButton("testsamples", "load example"), tableOutput("samples_info")),
-                                 box(width=6, title = "Setup",
-                                     fileInput("sampleFileInput",label="Select trace-tables generated by the Spike Analyzer Plugin", multiple=T)),
-                                 box(width=12, selectInput("preview_sample", "Table Preview", choices=c(), selectize=F),
+                                 
+                                 
+                                 #box(width="200px", title = "Samples",
+
+
+                                     # fileInput("sampleFileInput",label="Select trace-tables generated by the Spike Analyzer Plugin", multiple=T, width=200),
+                                     # actionButton("removesamples", "remove all"),
+                                     # actionButton("testsamples", "load example"),
+                                     # tableOutput("samples_info")),
+                                 #box(width=6, title = "Setup",
+                                     #fileInput("sampleFileInput",label="Select trace-tables generated by the Spike Analyzer Plugin", multiple=T)),
+                                 box(width=6, title  =  "Quick User Manual",
+                                     
+                                     
+                                     tags$li("Upload the trace tables which where generated using the FIJI-plugin"),
+                                     tags$li("Check parameters stringency and dF/F threshold in the section Plot Curves"),
+                                     tags$li("Once you are happy with the parameters go to Spike Analyzer, set up the same parameters and click on Analyze"),
+                                     tags$li("After the Analysis ran on all tables, you can export the tables")
+                                     ),
+                                 box(width=6, title = "Sample Info",
+                                     tableOutput("samples_info")
+                                     # selectInput("preview_sample", "Table Preview", choices=c(), selectize=F),
+                                     # uiOutput("column"),
+                                     # DT::dataTableOutput("tabs")
+                                 ),
+                                 
+                                 
+                                 box(width=12, title =  "Preview Tables", collapsed =T, collapsible = T,
+                                     selectInput("preview_sample", "Table Preview", choices=c(), selectize=F),
                                      uiOutput("column"),
-                                     DT::dataTableOutput("tabs")
-                                 )
+                                     DT::dataTableOutput("tabs"))
                                  
                                  
                          ),
                          
                        tabItem("plot",
                                
-                               box(width=6,  height = "100%", title = "Plot Calcium Traces",
-                                   
-                                   selectInput("view_sample", "Select a Table", choices=c(), selectize=F, multiple = F),
-                                   uiOutput("plotcolumn", width=6), uiOutput("cells", width=6),
-                                   #uiOutput("background", width=6),
-                                   numericInput("del", "Time between Frames (in ms)", value = 100, min = 0, max = 10000),
-                                   sliderInput("stringency", "Choose a stringency for the peak detection", 0, 100, step=0.1, value=5),
-                                   sliderInput("dfThresh", "Choose a minimum dF/F threshold value", 0, 5, step=0.01, value=0.1),
-                                   checkboxInput("checkFacetgrid", "Use a facet_grids", value = F),
-                                   checkboxInput("show.peaks", "Show Peak Points (Start in Red, End in Blue)", value = F)),
-                               box(width=6, height = "100%", title = "Plot Calcium Traces",
-                                   jqui_resizable(plotOutput("traces",  width = "100%",  height = "100%"))
-                                   ),
                                
-                               box(width=12, collapsed=T, collapsible = T, title="Plot Parameters",
+                               box(width=12,  title = "Plot Calcium Traces",
+                                 
+                                checkboxInput("checkFacetgrid", "Use Facet Grids to display single traces", value = F),
+                                checkboxInput("show.peaks", "Show Peak Points (Start in Red, End in Blue)", value = T),
+                                   #plotOutput("traces")
+                                #jqui_resizable(plotOutput("traces"))
+                                plotlyOutput("traces")
+                               ),
+                               box(width=12, collapsed=T, collapsible = T, title="Download Plot",
+                                   column(width=5,
+                                   #uiOutput("cells", width=6),
                                    sliderInput("plotWidth", "Plot-Width in cm", 1, 50, step=0.5, value=8),
                                    sliderInput("plotHeight", "Plot-Height in cm", 1, 50, step=0.5, value=11),
                                downloadButton("downloadPlot", "Download"))
-                               
+                               )
                                
                                ),
                        
                        tabItem("spike",
                                
-                               box(width=12, title = "Setup Parameters",
-                                   
-                                   uiOutput("plotcolumn2", width=6),
-                                   #uiOutput("background2", width=6),
-                                   numericInput("del2", "Time between Frames (in ms)", value = 100, min = 0, max = 10000),
-                                   sliderInput("stringency2", "Choose a stringency for the peak detection", 0, 100, step=0.1, value=5),
-                                   sliderInput("dfThresh2", "Choose a minimum dF/F threshold value", 0, 5, step=0.01, value=0.1),
-                                   actionButton("analysis", "Start Analysis")
-                                   ),
-                               box(width=12, collapsed=T, collapsible = T, title="Inspect Tables",
+                               # box(width=12, title = "Setup Parameters",
+                               #     
+                               #     uiOutput("plotcolumn2", width=6),
+                               #     #uiOutput("background2", width=6),
+                               #     numericInput("del2", "Time between Frames (in ms)", value = 100, min = 0, max = 10000),
+                               #     sliderInput("stringency2", "Choose a stringency for the peak detection", 0, 100, step=0.1, value=5),
+                               #     sliderInput("dfThresh2", "Choose a minimum dF/F threshold value", 0, 5, step=0.01, value=0.1),
+                               #     actionButton("analysis", "Start Analysis")
+                               #     ),
+                               box(width=12, collapsed=F, collapsible = T, title="Inspect Tables",
                                    #checkboxInput("checkFacetgrid", "Use a facet_grids", value = F),
                                    selectInput("resultsTable", "Select a Table", choices=list("Peak-wise"="peakTables", "Cell-wise"="meanTables"), selectize=F, multiple = F),
                                    DT::dataTableOutput("results")),
@@ -95,10 +158,32 @@ shinyUI( dashboardPage(skin = "black",
                                    downloadButton("downloadTable", "Download Table")
                                    
                                    )
+                               ),
+                       tabItem("plugin",
                                
-                               
-                               
+                               box(width=12, title="Download the Fiji-plugin script",
+                                   ##Add Plugin description here
+                                   
+                                   column( width=6,
+                                     
+                                     br(),
+
+                                     p("Here you can download the Fiji-plugin script used to extract the values from Calcium-imaging videos. 
+                                       After downloading, drag the Python-script into the Fiji-Toolbar. The Fiji-script Editor should pop up now. 
+                                       Click on Run, select the folder with your videos and determine a radius for the cell selections. After setting the parameters, click on the center of every cell you want to measure.
+                                       After the script is done, you should find a new folder with the measurement tables in same directory with your videos. You can analyze those tables using this ShinyApp. 
+                                       Happy Spiking!" 
+                                       ),
+                                     
+                                     downloadButton("downloadPlugin", "Download Fiji Plugin")
+                                     
+                                    )
+                                   
                                )
+                               
+                               
+                               
+                       )
                                
                                
                        )

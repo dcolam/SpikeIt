@@ -37,7 +37,8 @@ function(input, output, session){
   tables <- reactiveValues(
     filenames= NULL,
     sizes = NULL,
-    tabs = NULL
+    tabs = NULL,
+    peakTables = NULL
   )
   
   output$samples_info <- renderTable({
@@ -46,8 +47,26 @@ function(input, output, session){
     }
   })
   
+  # prints the menu badge for samples
+  output$badgeText_samples <- renderText({
+    if(is.null(tables$tabs)) return("empty")
+    else(return("ready"))
+  })
+  
+  output$badgeText_samples2 <- renderText({
+    if(is.null(tables$peakTables)) return("empty")
+    else(return("ready"))
+  })
+  
+
+  
   observeEvent(input$removesamples, {
-    tables = NULL
+    tables$filenames <-  NULL
+    tables$sizes <-  NULL
+    tables$tabs <-  NULL
+    tables$peakTables <- NULL
+    #tables$peaks$dat <- NULL
+    # tables$peaks$datMax <- NULL
   })
   
   observeEvent(input$testsamples, {
@@ -60,6 +79,7 @@ function(input, output, session){
     tables$tabs <- c(tables$tabs, lapply(exTab$filename, FUN=function(x){
       x=data.frame(read_delim(x, ",", escape_double = FALSE, trim_ws = TRUE))
     }))
+    
     names(tables$tabs) <- tables$filenames
     updateSelectInput(session, inputId = "preview_sample", choices=tables$filenames)
     updateSelectInput(session, inputId = "view_sample", choices=tables$filenames)
@@ -149,22 +169,26 @@ function(input, output, session){
       dat$t <- row.names(dat)
       dat <- dat[, c("t", input$plotCells)]
       
-      peaks <- peakAnalysis(input$view_sample, dat, input, show.plots=T)
+      withProgress(message = 'Making plot', value = 0, {
+      incProgress(0.334, detail = "Extracting Peaks..")
+      tables$peaks <- peakAnalysis(input$view_sample, dat, input, show.plots=T)
       
       
-      dat <- peaks$dat
-      datMax <- peaks$datMax
+      dat <- tables$peaks$dat
+      datMax <- tables$peaks$datMax
       #print(peaks)
-      print(datMax)
-      
-      p <- ggplot(data=dat, aes(x=t, y=Value, colour = variable)) + geom_line()
+      #print(datMax)
+      incProgress(0.667, detail = "Plotting..")
+      p <- ggplot(data=dat, aes(x=Time, y=Value, colour = variable)) + geom_line() + theme_minimal()
+      incProgress(1, detail = "Done")
+      })
       
       if(input$show.peaks){
         if(!is.na(datMax$variable)){
         p <- p +
-        geom_point(data=datMax, aes(x=t, y=Value, color=variable)) +
-        geom_point(data=datMax, aes(x=start, y=intensity.start, label="Peak Start"),  color="red") +
-        geom_point(data=datMax, aes(x=stop, y=intensity.stop), label="Peak Stop", color="blue") + labs(x = "Time", y = "dF/F", color = "Trace")
+        geom_point(data=datMax, aes(x=Time, y=Value, color=variable)) +
+        geom_point(data=datMax, aes(x=start.Time, y=intensity.start, label="Peak Start"),  color="red") +
+        geom_point(data=datMax, aes(x=stop.Time, y=intensity.stop), label="Peak Stop", color="blue") + labs(x = "Time [s]", y = "dF/F", color = "Trace")
         }
       }
  
@@ -179,8 +203,9 @@ function(input, output, session){
     
   })
   
+  jqui_resizable(ui="#traces")
   
-  output$traces <- renderPlot({
+  output$traces <- renderPlotly({
     
     p()
     
@@ -236,22 +261,32 @@ function(input, output, session){
   
   observeEvent(input$analysis, {
     
-    maxTables <- lapply(names(tables$tabs), FUN=function(x){
+    withProgress(message = "Extracting Peaks..", value = 0, {
+      
+    n <- length(names(tables$tabs))
+    inc <- 1
+
+    maxTables <- lapply(seq_along(tables$tabs), FUN=function(i){
+      x <- names(tables$tabs)[[i]]
       dat <- tables$tabs[[x]]
       dat$t <- row.names(dat)
-      x= peakAnalysis(x, dat, input, show.plots=F)
+      
+      incProgress(inc/n, detail = paste("Analyze Table ", x, sep="\n"))
+      inc <- inc + i
+      x=peakAnalysis(x, dat, input, show.plots=F)
     })
     
-    
+    inc <- inc + 1
+    incProgress(inc/n, detail = "Aggregating Tables..")
     maxTables <- bind_rows(maxTables, .id = "column_label")
+    print(maxTables)
     
-    
-    colnames(maxTables) <- c("Table.ID", "Cell.Trace", "Peak.Time", "Peak.Value", "Table", "Peak.Start", "Peak.Stop", "Start.Intensity", "Stop.Intensity", 
-                             "Peak.Duration", "Duration.To.Peak", "Time.To.Decay", "Baseline.Intensity", "Amplitude")
+    colnames(maxTables) <- c("Table.ID", "Cell.Trace", "Peak.Time[Frame]", "Peak.Intensity[df/F]", "Table", "Peak.Start[Frame]", "Peak.Stop[Frame]", "Start.Intensity[df/F]", "Stop.Intensity[df/F]", 
+                             "Peak.Duration[s]", "Duration.To.Peak[s]", "Time.To.Decay[s]", "Baseline.Intensity[df/F]", "Amplitude", "Peak.Time[s]", "Peak.Start[s]", "Peak.Stop[s]")
     #print(maxTables)
     tables$peakTables <- maxTables
     
-    cols <- c("Table.ID", "Cell.Trace", "Peak.Value", "Table", "Start.Intensity", "Stop.Intensity", "Peak.Duration", "Duration.To.Peak", "Time.To.Decay", "Baseline.Intensity", "Amplitude")
+    cols <- c("Table.ID", "Cell.Trace", "Peak.Intensity[df/F]", "Table", "Start.Intensity[df/F]", "Stop.Intensity[df/F]", "Peak.Duration[s]", "Duration.To.Peak[s]", "Time.To.Decay[s]", "Baseline.Intensity[df/F]", "Amplitude")
     
     meanTables <- aggregate(maxTables[,cols], by=list(Table.ID = maxTables$Table.ID, 
                                                       Cell.Trace = maxTables$Cell.Trace, 
@@ -262,15 +297,13 @@ function(input, output, session){
                                      }
                                    })
     tables$meanTables <-  meanTables[, cols]
+    incProgress(n, detail = "Done")
+    
+    })
     #print(tables$meanTables)
   })
   
-  # observeEvent(tables, {
-  #   if(!is.null(tables[[input$resultsTable]])){
-  #   updateSelectizeInput("resultsColumns", choices=colnames(tables[[input$resultsTable]]), value="Amplitude")
-  #   }
-  # })
-  
+
   output$results <- DT::renderDataTable({
     if(!is.null(tables[[input$resultsTable]])){
       #tab <- tables$tabs[[input$preview_sample]]
@@ -313,6 +346,19 @@ function(input, output, session){
     },
     content = function(file) {
       write.csv(tables[[input$download_table]], file, row.names = FALSE)
+    }
+  )
+  
+  scriptFile <- read_file("Extract_Spikes_v3.py")
+  
+  output$downloadPlugin <- downloadHandler(
+    filename = function() {
+      #paste(input$download_table, ' Edited Table.csv', sep='')
+      #paste(input$tabTitle, ".csv", sep="")
+      "Extract_Spikes_v3.py"
+    },
+    content = function(file) {
+      write_file(scriptFile, file)
     }
   )
   
